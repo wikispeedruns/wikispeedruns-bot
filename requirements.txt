@@ -2,3 +2,5 @@ requests
 
 wikipedia2vec
 scipy
+
+pymysql

@@ -48,8 +48,8 @@ class GreedySearch:
                     min_dist = dist
 
             if next_article == "":
-                raise PathNotFoundException("GreedySearch: could not find path")
-                
+                raise PathNotFoundException(f"GreedySearch: could not find path, current: {ret}")
+                        
             ret.append(next_article)
             cur = next_article
 
@@ -68,8 +68,10 @@ class BeamSearch:
         cur = end
         while(parent[cur] != cur):
             ret.append(cur)
-
-        return reversed(ret)
+            cur = parent[cur]
+        
+        ret.append(cur)
+        return list(reversed(ret))
 
 
     def search(self, start: str, end: str):

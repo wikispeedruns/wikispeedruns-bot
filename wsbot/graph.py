@@ -1,8 +1,12 @@
 from abc import ABC, abstractmethod
 from wikipedia2vec import Wikipedia2Vec
 
+import pymysql
+from pymysql.cursors import DictCursor
+
 import requests
 
+# TODO make these context proveriders?
 class GraphProvider(ABC):
     '''
     Provide the outgoing links and other operations on the Wikipedia graph
@@ -16,7 +20,7 @@ class GraphProvider(ABC):
         return [self.get_links(a) for a in articles]
 
 
-class ApiGraph(GraphProvider):
+class APIGraph(GraphProvider):
     '''
     Graph queries served by the public Wikipedia API
     '''
@@ -45,4 +49,30 @@ class ApiGraph(GraphProvider):
         resp = requests.get(url, params={**self.PARAMS, "titles": "|".join(articles)}).json()
         return self._links_from_resp(resp) 
 
-# TODO database based Graph Provider
+
+class SQLGraph(GraphProvider):
+    '''
+    Graph queries served by the custom wikipedia speedruns SQL database graph
+    '''
+    def __init__(self, host, user, password, database):
+        self.db = pymysql.connect(host=host, user=user, password=password, database=database)
+        self.cursor = self.db.cursor(cursor=DictCursor)
+
+    def get_links(self, article):
+        id_query = "SELECT * FROM articleid WHERE name=%s"
+        edge_query = """
+            SELECT a.name FROM edgeidarticleid AS e 
+            JOIN articleid AS a
+            ON e.dest = a.articleID
+            WHERE e.src = %s
+        """
+        self.cursor.execute(id_query, article)
+        article_id = self.cursor.fetchone()["articleID"]
+        if article_id is None: return None
+        
+        self.cursor.execute(edge_query, article_id)
+        
+        return [row["name"] for row in self.cursor.fetchall()]
+        
+    # TODO write a query that does this properly 
+    #def get_links_batch(self, articles):
