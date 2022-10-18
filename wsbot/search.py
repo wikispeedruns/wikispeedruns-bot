@@ -1,3 +1,4 @@
+from scipy.spatial import distance
 
 # TODO base class
 
@@ -15,12 +16,11 @@ class GreedySearch:
         self.max_iterations = max_iterations
 
 
-    def search(start: str, end: str):
+    def search(self, start: str, end: str):
         # Greedily searches the wikipedia graph
         cur = start
-        end_v = self.embeddings.get_entity_vector(end)
+        end_v = self.embeddings.get_embedding(end)
 
-        visited = {start, }
         ret = [start, ]
 
         for i in range(self.max_iterations):
@@ -28,16 +28,16 @@ class GreedySearch:
             next_article = ""
 
             for link in self.graph.get_links(cur):    
-                if link in visited:
+                if link in ret:
                     continue
 
                 if (link == end): 
                     #print(f"Found link in {cur}!")
-                    ret += link
+                    ret.append(link)
                     return ret
 
                 try: 
-                    cur_v = self.embeddings.get_entity_vector(link)
+                    cur_v = self.embeddings.get_embedding(link)
                 except KeyError:    
                     continue
 
@@ -50,8 +50,62 @@ class GreedySearch:
             if next_article == "":
                 raise PathNotFoundException("GreedySearch: could not find path")
                 
-            visited.add(next_article)
+            ret.append(next_article)
             cur = next_article
 
         raise MaxIterationsException(f"GreedySearch: Max iterations {self.max_iterations} reached, current path: {ret}")
         
+
+class BeamSearch:
+    def __init__(self, embedding_provider, graph_provider, max_iterations=20, width=10):
+        self.embeddings = embedding_provider
+        self.graph = graph_provider
+        self.max_iterations = max_iterations
+        self.width = width
+
+    def _get_path(self, end, parent):
+        ret = []
+        cur = end
+        while(parent[cur] != cur):
+            ret.append(cur)
+
+        return reversed(ret)
+
+
+    def search(self, start: str, end: str):
+        # Define distance metric
+        # TODO customizable
+        end_v = self.embeddings.get_embedding(end)
+        def get_dist(article):
+            try: 
+                cur_v = self.embeddings.get_embedding(link)
+            except KeyError:    
+                return 100
+            return distance.cosine(cur_v, end_v)
+
+        # Greedily searches the wikipedia graph
+        cur_set = [start]
+        # Keeps track of parent articles, also serves as visitor set
+        parent = {start: start}
+
+        for i in range(self.max_iterations):
+            next_set = []
+            for article in cur_set:
+                outgoing = self.graph.get_links(article)
+                for link in outgoing:
+                    if link in parent:
+                        continue
+                    parent[link] = article
+                    next_set.append((get_dist(link), link))
+
+                    if link == end:
+                        return self._get_path(link, parent)
+
+            cur_set = [article for (_, article) in sorted(next_set)]
+            cur_set = cur_set[:self.width]
+            print(f"Articles in iteration {i}: ", cur_set)
+        
+        raise MaxIterationsException(f"BeamSearch: Max iterations {self.max_iterations} reached")
+        
+# TODO probabilistic search (for random results)
+# TODO other heuristics

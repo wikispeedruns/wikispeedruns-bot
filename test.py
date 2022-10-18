@@ -5,8 +5,8 @@ from wikipedia2vec import Wikipedia2Vec
 
 from scipy.spatial import distance
 
-start = "Betty White"
-end = "IKEA"
+start = "Navigation"
+end = "Barn owl"
 
 # TODO use our data source
 def get_links(article):
@@ -24,12 +24,17 @@ embedding = Wikipedia2Vec.load_text("ws2vec")
 cur = start
 end_v = embedding.get_entity_vector(end)
 
+visited = {start,}
+
 for i in range(20):
     
-    min_dist = 1
+    min_dist = 2
     next_article = ""
 
     for link in get_links(cur):    
+        if link in visited:
+            continue
+
         if (link == end): 
             print(f"Found link in {cur}!")
             exit(0)
@@ -46,6 +51,11 @@ for i in range(20):
         if dist <= min_dist:
             next_article = link
             min_dist = dist
+
+    if next_article == "":
+        print(f"Could not find path")
+        
+    visited.add(next_article)
 
     print(f"Moving to {next_article}, cos dist = {min_dist}")
     cur = next_article

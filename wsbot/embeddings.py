@@ -6,11 +6,11 @@ class EmbeddingsProvider(ABC):
     def get_embedding(self, article: str):
         pass
     
-    def get_embeddings(self, articles: list[str]):
+    def get_embeddings(self, articles): 
         return [self.get_embeddings(a) for a in articles]
             
 class LocalEmbeddings(EmbeddingsProvider):
-    def __init__(self.filename: str):
+    def __init__(self, filename: str):
         self.wiki2vec = Wikipedia2Vec.load_text(filename)
 
     def get_embedding(self, article: str):
